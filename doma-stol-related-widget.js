@@ -6,7 +6,7 @@ if(!DB){
  return;
 }
 document.documentElement.setAttribute('data-ds-related-status','running');
-const ROOTS='.t-store__product-snippet,.t-store__product-popup,.t-store__prod-popup__container,.t-catalog__product-snippet,.t-catalog__product-popup,.t-catalog__prod-popup__container,.js-product[data-product-uid]';
+const ROOTS='.t-store__product-popup,.t-store__prod-popup__container,.t-catalog__product-snippet,.t-catalog__product-popup,.t-catalog__prod-popup__container';
 const UID_INDEX={};Object.keys(DB.index||{}).forEach(p=>{const m=p.match(/^\/tproduct\/(\d+)/);if(m)UID_INDEX[m[1]]=p});
 const norm=p=>{try{const raw=String(p||'').replace(/^#!?/,'');const m=raw.match(/\/tproduct\/[^/?#]+/);if(m)return m[0].replace(/\/$/,"");const u=new URL(raw,location.origin);const n=u.pathname.match(/\/tproduct\/[^/?#]+/);return n?n[0].replace(/\/$/,""):""}catch(e){return""}};
 function currentPath(root){
