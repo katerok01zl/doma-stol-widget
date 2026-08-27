@@ -15,13 +15,16 @@ const EXCLUDED_TITLES=new Set([
  'стол марко 130 шпон орех каркас орех'
 ]);
 const isExcluded=v=>EXCLUDED_TITLES.has(normTitle(v?.title));
+const normanLength=v=>{const m=normTitle(v?.title).match(/^стол(?: кухонный)? норман (\d{2,3})\b/);return m?m[1]:''};
 const norm=p=>{try{const raw=String(p||'').replace(/^#!?/,'');const m=raw.match(/\/tproduct\/[^/?#]+/);if(m)return m[0].replace(/\/$/,"");const u=new URL(raw,location.origin);const n=u.pathname.match(/\/tproduct\/[^/?#]+/);return n?n[0].replace(/\/$/,""):""}catch(e){return""}};
+function mappedPath(value){const p=norm(value);if(!p)return'';if(DB.index[p])return p;const m=p.match(/^\/tproduct\/(\d+)/);return m&&UID_INDEX[m[1]]?UID_INDEX[m[1]]:''}
 function currentPath(root){
+ const hashPath=mappedPath(location.hash);if(hashPath)return hashPath;
+ const values=[root?.getAttribute?.('data-product-url'),root?.querySelector?.('[data-product-url]')?.getAttribute('data-product-url'),root?.querySelector?.('a[href*="/tproduct/"]')?.getAttribute('href')];
+ for(const v of values){const p=mappedPath(v);if(p)return p}
  const uid=root?.getAttribute?.('data-product-uid')||root?.getAttribute?.('data-product-lid')||root?.querySelector?.('[data-product-uid]')?.getAttribute('data-product-uid')||root?.querySelector?.('[data-product-lid]')?.getAttribute('data-product-lid');
  if(uid&&UID_INDEX[String(uid)])return UID_INDEX[String(uid)];
- const values=[location.hash,root?.getAttribute?.('data-product-url'),root?.querySelector?.('[data-product-url]')?.getAttribute('data-product-url'),root?.querySelector?.('a[href*="/tproduct/"]')?.getAttribute('href'),location.pathname];
- for(const v of values){const p=norm(v);if(!p)continue;if(DB.index[p])return p;const m=p.match(/^\/tproduct\/(\d+)/);if(m&&UID_INDEX[m[1]])return UID_INDEX[m[1]]}
- return '';
+ return mappedPath(location.pathname);
 }
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function mount(root){
@@ -32,7 +35,8 @@ function mount(root){
  if(existing)existing.remove();
  if(!path)return;
  const group=DB.index[path],allVariants=group&&DB.groups[group],current=allVariants?.find(v=>v.path===path);
- const variants=allVariants?.filter(v=>!isExcluded(v));
+ let variants=allVariants?.filter(v=>!isExcluded(v));
+ const length=normanLength(current);if(length)variants=variants?.filter(v=>normanLength(v)===length);
  if(isExcluded(current)||!variants||variants.length<2)return;
  const info=root.matches?.('.t-store__prod-popup__info,.t-catalog__prod-popup__info')?root:root.querySelector?.('.t-store__prod-popup__info,.t-catalog__prod-popup__info,.t-store__product-snippet,.t-catalog__product-snippet')||root;
  const anchor=info.querySelector?.('.t-store__prod-popup__price-wrapper,.t-catalog__prod-popup__price-wrapper,.js-product-controls-wrapper,.t-product__option')||info.firstElementChild;
