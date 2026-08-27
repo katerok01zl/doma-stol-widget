@@ -11,7 +11,7 @@ const UID_INDEX={};Object.keys(DB.index||{}).forEach(p=>{const m=p.match(/^\/tpr
 const norm=p=>{try{const raw=String(p||'').replace(/^#!?/,'');const m=raw.match(/\/tproduct\/[^/?#]+/);if(m)return m[0].replace(/\/$/,"");const u=new URL(raw,location.origin);const n=u.pathname.match(/\/tproduct\/[^/?#]+/);return n?n[0].replace(/\/$/,""):""}catch(e){return""}};
 function currentPath(root){
  const values=[root?.getAttribute?.('data-product-url'),root?.querySelector?.('[data-product-url]')?.getAttribute('data-product-url'),root?.querySelector?.('a[href*="/tproduct/"]')?.getAttribute('href'),location.pathname,location.hash];
- for(const v of values){const p=norm(v);if(p&&DB.index[p])return p}
+ for(const v of values){const p=norm(v);if(!p)continue;if(DB.index[p])return p;const m=p.match(/^\/tproduct\/(\d+)/);if(m&&UID_INDEX[m[1]])return UID_INDEX[m[1]]}
  const uid=root?.getAttribute?.('data-product-uid')||root?.getAttribute?.('data-product-lid')||root?.querySelector?.('[data-product-uid]')?.getAttribute('data-product-uid')||root?.querySelector?.('[data-product-lid]')?.getAttribute('data-product-lid');
  return uid&&UID_INDEX[String(uid)]?UID_INDEX[String(uid)]:'';
 }
