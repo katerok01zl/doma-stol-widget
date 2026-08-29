@@ -44,8 +44,46 @@ function mount(root){
  const list=box.lastElementChild;variants.forEach(v=>{if(!v.path)return;const a=document.createElement('a');a.className='ds-related__item'+(v.path===path?' is-active':'');a.href=v.url||v.path;a.title=v.title;a.innerHTML=(v.image?'<img class="ds-related__img" loading="lazy" decoding="async" alt="'+esc(v.label)+'" src="'+esc(v.image)+'">':'<span class="ds-related__img ds-related__img--empty"></span>')+'<span class="ds-related__label">'+esc(v.label)+'</span>';list.appendChild(a)});
  if(anchor?.parentNode)anchor.parentNode.insertBefore(box,anchor.nextSibling);else info.appendChild(box);
 }
-function scan(scope=document){scope.querySelectorAll?.(ROOTS).forEach(mount);if(scope.matches?.(ROOTS))mount(scope)}
-let queued=false,pending=[];const queue=nodes=>{pending.push(...nodes);if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;const nodes=pending.splice(0);nodes.forEach(scan);scan()})};
-function start(){scan();document.documentElement.setAttribute('data-ds-related-status',document.querySelector('.ds-related')?'mounted':'watching');new MutationObserver(()=>queue([document])).observe(document.body,{childList:true,subtree:true,attributes:true,characterData:true});window.addEventListener('popstate',()=>setTimeout(scan,100));window.addEventListener('hashchange',()=>{setTimeout(scan,50);setTimeout(scan,300)});document.addEventListener('click',()=>{setTimeout(scan,80);setTimeout(scan,300);setTimeout(scan,700)},true);setInterval(scan,500)}
+
+const observedRoots=new WeakSet();
+function watchRoot(root){
+ if(!root||observedRoots.has(root))return;
+ observedRoots.add(root);
+ new MutationObserver(()=>queue([root])).observe(root,{childList:true,subtree:true,attributes:true,attributeFilter:['data-product-url','data-product-uid','data-product-lid','href']});
+}
+function scan(scope=document){
+ const roots=[];
+ if(scope.matches?.(ROOTS))roots.push(scope);
+ scope.querySelectorAll?.(ROOTS).forEach(root=>roots.push(root));
+ roots.forEach(root=>{watchRoot(root);mount(root)});
+}
+let queued=false,pending=[];
+const queue=nodes=>{
+ pending.push(...nodes);
+ if(queued)return;
+ queued=true;
+ requestAnimationFrame(()=>{
+  queued=false;
+  const unique=[...new Set(pending.splice(0))];
+  unique.forEach(scan);
+ });
+};
+function delayedScan(){setTimeout(scan,60);setTimeout(scan,260);setTimeout(scan,650)}
+function start(){
+ scan();
+ document.documentElement.setAttribute('data-ds-related-status',document.querySelector('.ds-related')?'mounted':'watching');
+ new MutationObserver(ms=>{
+  const roots=[];
+  ms.forEach(m=>m.addedNodes.forEach(n=>{
+   if(n.nodeType!==1)return;
+   if(n.matches?.(ROOTS))roots.push(n);
+   n.querySelectorAll?.(ROOTS).forEach(root=>roots.push(root));
+  }));
+  if(roots.length)queue(roots);
+ }).observe(document.body,{childList:true,subtree:true});
+ window.addEventListener('popstate',delayedScan);
+ window.addEventListener('hashchange',delayedScan);
+ document.addEventListener('click',e=>{if(e.target.closest?.('a[href*="/tproduct/"]'))delayedScan()},true);
+}
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',start,{once:true}):start();
 })(0);
