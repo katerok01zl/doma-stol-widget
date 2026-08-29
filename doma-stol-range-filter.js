@@ -7,6 +7,7 @@
   var STYLE_ID = 'ds-catalog-range-filter-style';
   var APPLY_DELAY = 120;
   var observer;
+  var observerRoot;
   var mountTimer;
 
   function injectStyles() {
@@ -16,6 +17,7 @@
     style.id = STYLE_ID;
     style.textContent = [
       '.ds-range-filter .ds-range-filter__native{display:none!important}',
+      '.ds-range-filter .t-catalog__filter__btn-expand{display:none!important}',
       '.ds-range-filter__ui{padding:3px 0 4px;font-family:Inter,Arial,sans-serif}',
       '.ds-range-filter__sliders{position:relative;height:26px;margin:0 10px 5px}',
       '.ds-range-filter__rail,.ds-range-filter__fill{position:absolute;top:12px;height:2px;border-radius:2px}',
@@ -136,12 +138,29 @@
       });
     }
 
-    state.applying = true;
+    var desired = new Map();
+    var changed = [];
+
     state.boxes.forEach(function (box) {
       var value = Number(String(box.getAttribute('data-filter-value') || '').replace(',', '.'));
       var shouldBeChecked = !isFullRange && Boolean(allowed[value]);
-      if (box.checked !== shouldBeChecked) box.click();
+      desired.set(box, shouldBeChecked);
+      if (box.checked !== shouldBeChecked) changed.push(box);
     });
+
+    if (!changed.length) return;
+
+    /*
+     * Tilda reads the complete checkbox state when one checkbox changes.
+     * Prepare all values first and emit only one native click so the catalog
+     * is recalculated once instead of once for every value in the interval.
+     */
+    var trigger = changed[changed.length - 1];
+    state.applying = true;
+    state.boxes.forEach(function (box) {
+      if (box !== trigger) box.checked = desired.get(box);
+    });
+    trigger.click();
     state.applying = false;
 
     window.setTimeout(function () { syncFromNative(state); }, APPLY_DELAY);
@@ -314,6 +333,13 @@
   function mountAll() {
     mountTimer = null;
     document.querySelectorAll('.js-catalog-filter-item').forEach(mount);
+
+    var filterRoot = document.querySelector('.js-catalog-filter');
+    if (observer && filterRoot && observerRoot !== filterRoot) {
+      observer.disconnect();
+      observerRoot = filterRoot;
+      observer.observe(filterRoot, { childList: true, subtree: true });
+    }
   }
 
   function scheduleMount() {
@@ -323,10 +349,10 @@
 
   function start() {
     injectStyles();
-    mountAll();
-
     observer = new MutationObserver(scheduleMount);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observerRoot = document.querySelector('.js-catalog-filter') || document.body;
+    observer.observe(observerRoot, { childList: true, subtree: true });
+    mountAll();
 
     window.addEventListener('popstate', function () {
       window.setTimeout(function () {
