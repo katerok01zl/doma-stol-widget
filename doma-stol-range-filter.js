@@ -138,29 +138,29 @@
       });
     }
 
-    var desired = new Map();
     var changed = [];
 
     state.boxes.forEach(function (box) {
       var value = Number(String(box.getAttribute('data-filter-value') || '').replace(',', '.'));
       var shouldBeChecked = !isFullRange && Boolean(allowed[value]);
-      desired.set(box, shouldBeChecked);
-      if (box.checked !== shouldBeChecked) changed.push(box);
+      if (box.checked !== shouldBeChecked) {
+        changed.push({ box: box, checked: shouldBeChecked });
+      }
     });
 
     if (!changed.length) return;
 
     /*
-     * Tilda reads the complete checkbox state when one checkbox changes.
-     * Prepare all values first and emit only one native click so the catalog
-     * is recalculated once instead of once for every value in the interval.
+     * Tilda keeps its own list of selected filter values. Updating every DOM
+     * checkbox and clicking only one of them leaves old values in that list
+     * when the interval becomes narrower (for example 120–140 can still keep
+     * 100 and 110). Click every changed native checkbox so Tilda removes and
+     * adds each value in its internal filter state as well.
      */
-    var trigger = changed[changed.length - 1];
     state.applying = true;
-    state.boxes.forEach(function (box) {
-      if (box !== trigger) box.checked = desired.get(box);
+    changed.forEach(function (change) {
+      if (change.box.checked !== change.checked) change.box.click();
     });
-    trigger.click();
     state.applying = false;
 
     window.setTimeout(function () { syncFromNative(state); }, APPLY_DELAY);
